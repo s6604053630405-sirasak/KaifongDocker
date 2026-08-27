@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { getDistrictCoords } from "@/lib/bangkok-district-coords";
 
 // ผลลัพธ์ Cluster ล่าสุดจาก Spatial Clustering Model
 // (อ่านจาก cluster_model_runs ที่ is_active = TRUE)
@@ -55,11 +56,15 @@ export async function GET() {
       districtsByCluster[r.cluster_id].push(r.district);
 
       const coords = toPointCoords(r.pca_coords);
-      if (coords !== null) {
+      const geo = getDistrictCoords(r.district); // { lat, lng } | null — สำหรับปักหมุดบนแผนที่จริง
+
+      if (coords !== null || geo !== null) {
         pointsByCluster[r.cluster_id] = pointsByCluster[r.cluster_id] || [];
         pointsByCluster[r.cluster_id].push({
           district: r.district,
-          ...coords,
+          ...(coords || {}),
+          lat: geo?.lat ?? null,
+          lng: geo?.lng ?? null,
           total_complaints:
             r.total_complaints !== null ? Number(r.total_complaints) : null,
         });

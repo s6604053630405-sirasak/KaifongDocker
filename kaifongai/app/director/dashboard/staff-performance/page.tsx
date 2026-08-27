@@ -15,6 +15,7 @@ const COLOR = {
   border: "#E8EAEC", text: "#1A1C1E", muted: "#6B6E72",
 };
 const DEPARTMENT_NAV = [
+  { teamCode: "ALL", label: "ทุกฝ่าย" },
   { teamCode: "TEAM_INFRA", label: "โครงสร้างพื้นฐาน" },
   { teamCode: "TEAM_ENV", label: "สิ่งแวดล้อม" },
   { teamCode: "TEAM_HEALTH", label: "สาธารณสุข" },
@@ -139,14 +140,14 @@ function KPICard({ label, value, accentColor, sub }: { label: React.ReactNode; v
     </div>
   );
 }
-function RankedStatRow({ rank, name, total, pct, metricLabel = "SLA", countLabel = "เรื่อง" }: { rank: number; name: string; total: number; pct: number | null; metricLabel?: string; countLabel?: string }) {
+function RankedStatRow({ rank, name, total, pct, metricLabel = "เป็นไปตาม SLA", countLabel = "เรื่อง" }: { rank: number; name: string; total: number; pct: number | null; metricLabel?: string; countLabel?: string }) {
   const col = pct == null ? COLOR.mid : slaColor(pct);
   return (
     <div className="flex items-center gap-2.5 border-b border-gray-100 py-2 text-sm last:border-0">
       <span className="w-5 text-center text-xs font-bold text-gray-400">{rank}</span>
       <span className="flex-1 truncate" title={name}>{name}</span>
       <span className="text-xs text-gray-400">{total.toLocaleString()} {countLabel}</span>
-      <span className="w-20 text-right text-xs font-semibold" style={{ color: col }}>{pct == null ? "ไม่มีข้อมูล" : `${metricLabel} ${pct}%`}</span>
+      <span className="w-30 text-right text-xs font-semibold" style={{ color: col }}>{pct == null ? "ไม่มีข้อมูล" : `${metricLabel} ${pct}%`}</span>
     </div>
   );
 }
@@ -171,7 +172,7 @@ function StaffWorkloadTableRow({ s, maxActive, avgActive, deptLabel, isTop, onCl
           </div>
         </div>
       </td>
-      <td className="whitespace-nowrap py-2.5 pr-4 text-gray-500">{deptLabel}</td>
+      <td className="whitespace-nowrap py-2.5 pr-4 text-gray-500">{s.team_name || deptLabel}</td>
       <td className="py-2.5 pr-4 text-right font-mono">{s.assigned_count?.toLocaleString() ?? 0}</td>
       <td className="py-2.5 pr-4 text-right font-mono">{s.done_count?.toLocaleString() ?? 0}</td>
       <td className="py-2.5 pr-4 text-right font-mono" style={{ color: overloaded ? barColor : COLOR.text, fontWeight: overloaded ? 700 : 400 }}>{s.active_count?.toLocaleString() ?? 0}</td>
@@ -243,16 +244,20 @@ export default function StaffPerformancePage() {
   const deptEntry = DEPARTMENT_NAV.find((d) => d.teamCode === teamCode);
   const deptLabel = deptEntry?.label || teamCode;
 
+  const isAllDepartments = teamCode === "ALL";
   const { data: teams } = useApi<any[]>("/api/teams");
   const team = Array.isArray(teams) ? teams.find((t) => t.code === teamCode) : null;
   const teamId = team?.id || null;
-  const realDeptName = team?.department_name || deptLabel;
+  const realDeptName = isAllDepartments ? deptLabel : team?.department_name || deptLabel;
 
+  // teamId เป็น null ทั้งตอน "ทุกฝ่าย" (ตั้งใจ) และตอน /api/teams ยังโหลดไม่เสร็จ (ชั่วคราว)
+  // ต้องแยก 2 กรณีนี้ด้วย isAllDepartments ไม่งั้นจะยิง request ก่อนข้อมูลทีมพร้อมจริง
+  const canLoad = dates && (teamId || isAllDepartments);
   const teamParams = { ...(dates || {}), team_id: teamId || undefined };
-  const { data, loading, error } = useApi<any>(dates && teamId ? "/api/teams/workload" : null, teamParams);
-  const { data: trend, loading: tl } = useApi<any[]>(dates && teamId ? "/api/trend" : null, teamParams);
-  const { data: areas, loading: al } = useApi<any[]>(dates && teamId ? "/api/by-area" : null, teamParams);
-  const { data: wf, loading: wfl } = useApi<any[]>(dates && teamId ? "/api/workflow" : null, teamParams);
+  const { data, loading, error } = useApi<any>(canLoad ? "/api/teams/workload" : null, teamParams);
+  const { data: trend, loading: tl } = useApi<any[]>(canLoad ? "/api/trend" : null, teamParams);
+  const { data: areas, loading: al } = useApi<any[]>(canLoad ? "/api/by-area" : null, teamParams);
+  const { data: wf, loading: wfl } = useApi<any[]>(canLoad ? "/api/workflow" : null, teamParams);
 
   const summary = data?.summary;
   const staff = Array.isArray(data?.staff) ? data.staff : [];
@@ -303,7 +308,7 @@ export default function StaffPerformancePage() {
         </div>
       </div>
 
-      {error ? <ErrorBanner message="โหลดข้อมูลฝ่ายนี้ไม่สำเร็จ" /> : (
+      {error ? <ErrorBanner message={`โหลดข้อมูล${isAllDepartments ? "ทุกฝ่าย" : "ฝ่ายนี้"}ไม่สำเร็จ`} /> : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <KPICard label="จำนวนเจ้าหน้าที่" value={loading ? "…" : `${summary?.staff_count ?? 0} คน`} accentColor={COLOR.primary} />
@@ -335,7 +340,7 @@ export default function StaffPerformancePage() {
               ผลการปฏิบัติงานของเจ้าหน้าที่
             </CardTitle>
             {loading ? <Skeleton height={240} /> : staff.length === 0 ? (
-              <div className="py-6 text-center text-gray-400">ยังไม่มีเจ้าหน้าที่ในฝ่ายนี้</div>
+              <div className="py-6 text-center text-gray-400">ยังไม่มีเจ้าหน้าที่{isAllDepartments ? "" : "ในฝ่ายนี้"}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -374,7 +379,7 @@ export default function StaffPerformancePage() {
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <Card>
-              <CardTitle sub="จำนวนรายการในแต่ละขั้นตอนการดำเนินงานของฝ่ายนี้">ขั้นตอนการดำเนินงาน</CardTitle>
+              <CardTitle sub={`จำนวนรายการในแต่ละขั้นตอนการดำเนินงาน${isAllDepartments ? "ทุกฝ่าย" : "ของฝ่ายนี้"}`}>ขั้นตอนการดำเนินงาน</CardTitle>
               {wfl ? <Skeleton height={200} /> : safeWf.length === 0 ? (
                 <div className="py-6 text-center text-gray-400">ไม่มีข้อมูลในช่วงเวลานี้</div>
               ) : (
@@ -389,7 +394,7 @@ export default function StaffPerformancePage() {
               )}
             </Card>
             <Card>
-              <CardTitle sub={`จำนวนเรื่องร้องเรียนที่รับใหม่และดำเนินการแล้ว ${trendGranularity === "day" ? "รายวัน" : trendGranularity === "week" ? "รายสัปดาห์" : "รายเดือน"} ของฝ่ายนี้`}>
+              <CardTitle sub={`จำนวนเรื่องร้องเรียนที่รับใหม่และดำเนินการแล้ว ${trendGranularity === "day" ? "รายวัน" : trendGranularity === "week" ? "รายสัปดาห์" : "รายเดือน"} ${isAllDepartments ? "ทุกฝ่าย" : "ของฝ่ายนี้"}`}>
                 {TREND_TITLE[trendGranularity]}
               </CardTitle>
               <ChartLegend items={[["รับเรื่องใหม่", COLOR.primary], ["ดำเนินการแก้ไขแล้ว", COLOR.green]]} />

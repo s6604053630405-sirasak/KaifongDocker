@@ -386,7 +386,7 @@ export default function ExecutivePage() {
           }>
             แนวโน้มของเรื่องร้องเรียน
           </CardTitle>
-          <ChartLegend items={[["รับเรื่องใหม่", COLOR.primary], ["ดำเนินการแล้ว", COLOR.green, true]]} />
+          <ChartLegend items={[["รับเรื่องใหม่", COLOR.primary], ["ดำเนินการแล้ว", COLOR.green]]} />
           {tl ? <Skeleton height={190} /> : (
             <ResponsiveContainer width="100%" height={190}>
               <LineChart data={safeTrend}>
@@ -403,7 +403,7 @@ export default function ExecutivePage() {
         </Card>
 
         <Card className="flex flex-col items-center">
-          <CardTitle sub="ดัชนีวัดคุณภาพการบริการ (สัดส่วนเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด)">อัตราความสำเร็จตาม SLA</CardTitle>
+          <CardTitle sub="ดัชนีวัดคุณภาพการบริการ (สัดส่วนเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด)">สัดส่วนเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด</CardTitle>
           {sl ? <Skeleton height={130} /> : (
             <>
               <SLAGauge pct={sla?.summary?.sla_pct || 0} size={200} />

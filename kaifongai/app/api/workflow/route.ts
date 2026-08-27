@@ -18,11 +18,12 @@ const LABEL_MAP: Record<string, string> = {
 
 const ORDER_MAP: Record<string, number> = {
   SUBMIT: 1,
-  ASSIGNED: 2,
-  RESOLVED: 3,
-  CLOSED: 4,
+  ASSIGNED: 3,
+  RESOLVED: 6,
+  CLOSED: 7,
   REOPEN: 5,
-  REJECT: 6,
+  REJECT: 2,
+  PAUSED: 4
 };
 
 export async function GET(req: NextRequest) {

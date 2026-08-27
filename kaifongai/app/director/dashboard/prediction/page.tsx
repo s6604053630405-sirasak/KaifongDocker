@@ -6,6 +6,7 @@
 // ในโปรเจกต์เดียวกัน, เปลี่ยนสไตล์จาก App.css → Tailwind
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   LineChart, Line, BarChart, Bar, Cell, ComposedChart,
   ScatterChart, Scatter, ZAxis,
@@ -14,8 +15,14 @@ import {
 } from "recharts";
 import {
   X, Filter, TriangleAlert, Eye, BarChart3, Tag, MapPin,
-  Lightbulb, PartyPopper, Info,
+  Lightbulb, PartyPopper, Info, Map as MapIcon, ScatterChart as ScatterIcon,
 } from "lucide-react";
+
+// leaflet เรียกใช้ window ตอน render จึงต้องปิด SSR ไว้เสมอ
+const ClusterMapChart = dynamic(() => import("@/components/ui/Director/ClusterMapChart"), {
+  ssr: false,
+  loading: () => <Skeleton height={340} />,
+});
 
 // ── สี (ตรงกับ COLOR object เดิมใน App.js) ─────────────────────
 const COLOR = {
@@ -650,6 +657,7 @@ export default function AIInsightPage() {
   const { data: latestDateData } = useApi<any>("/api/system-latest-date");
   const today = latestDateData?.latest_date || null;
   const [selectedCluster, setSelectedCluster] = useState<any>(null);
+  const [clusterView, setClusterView] = useState<"map" | "pca">("map");
 
   const safeByCategory = Array.isArray(riskData?.by_category) ? riskData.by_category : [];
   const safeByDistrict = Array.isArray(riskData?.by_district) ? riskData.by_district : [];
@@ -756,11 +764,47 @@ export default function AIInsightPage() {
 
       {/* Spatial Clustering */}
       <Card>
-        <CardTitle sub="จุดแต่ละจุด = 1 เขต  ขนาดจุด = ปริมาณเรื่องร้องเรียน  สีตามกลุ่ม — คลิกชื่อกลุ่มด้านล่างเพื่อดูรายชื่อพื้นที่ทั้งหมด">
-          การจัดกลุ่มพื้นที่เสี่ยง
-          <InfoTip text="AI ใช้เทคนิค K-means / DBSCAN ในการจัดกลุ่มพื้นที่ที่มีลักษณะปัญหาคล้ายกันโดยอัตโนมัติ ตำแหน่งจุดบนกราฟมาจากการย่อมิติข้อมูล (PCA) เครื่องหมาย X คือจุดศูนย์กลางของแต่ละกลุ่ม" />
-        </CardTitle>
-        <ClusterScatterChart clusters={safeClusters} loading={cl} />
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <CardTitle
+            sub={
+              clusterView === "map"
+                ? "จุดแต่ละจุด = 1 เขต (ปักบนแผนที่จริง)  ขนาดจุด = ปริมาณเรื่องร้องเรียน  สีตามกลุ่ม"
+                : "จุดแต่ละจุด = 1 เขต  ขนาดจุด = ปริมาณเรื่องร้องเรียน  สีตามกลุ่ม — คลิกชื่อกลุ่มด้านล่างเพื่อดูรายชื่อพื้นที่ทั้งหมด"
+            }
+          >
+            การจัดกลุ่มพื้นที่เสี่ยง
+            <InfoTip text="AI ใช้เทคนิค K-means / DBSCAN ในการจัดกลุ่มพื้นที่ที่มีลักษณะปัญหาคล้ายกันโดยอัตโนมัติ มุมมองแผนที่ปักหมุดตามพิกัดจริงของแต่ละเขต ส่วนมุมมอง PCA เป็นตำแหน่งที่ได้จากการย่อมิติข้อมูล (เครื่องหมาย X คือจุดศูนย์กลางของแต่ละกลุ่ม)" />
+          </CardTitle>
+          <div className="flex flex-none rounded-lg border border-gray-200 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setClusterView("map")}
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-medium ${
+                clusterView === "map" ? "bg-[#1A1C1E] text-white" : "text-gray-500"
+              }`}
+            >
+              <MapIcon className="h-3.5 w-3.5" strokeWidth={2.3} />
+              แผนที่
+            </button>
+            <button
+              type="button"
+              onClick={() => setClusterView("pca")}
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-medium ${
+                clusterView === "pca" ? "bg-[#1A1C1E] text-white" : "text-gray-500"
+              }`}
+            >
+              <ScatterIcon className="h-3.5 w-3.5" strokeWidth={2.3} />
+              PCA
+            </button>
+          </div>
+        </div>
+
+        {clusterView === "map" ? (
+          cl ? <Skeleton height={340} /> : <ClusterMapChart clusters={safeClusters} />
+        ) : (
+          <ClusterScatterChart clusters={safeClusters} loading={cl} />
+        )}
+
         <div className="h-3.5" />
         <ClusterNameRow clusters={safeClusters} loading={cl} onSelect={setSelectedCluster} />
         {clusterData?.model && (
