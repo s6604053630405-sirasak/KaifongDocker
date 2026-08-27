@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { Calendar, Building2, AlertTriangle, X, Info } from "lucide-react";
+import { Calendar, Building2, AlertTriangle, X, Info, Search } from "lucide-react";
 
 const COLOR = {
   primary: "#FFD100", dark: "#3F4444", green: "#00875A", amber: "#E67E00",
@@ -278,6 +278,12 @@ export default function StaffPerformancePage() {
     return sortBy === "sla" ? a.sla_pct - b.sla_pct : b.sla_pct - a.sla_pct;
   });
 
+  // ค้นหาเจ้าหน้าที่ตามชื่อ (ไม่สนตัวพิมพ์เล็ก/ใหญ่) — กรองจากรายการที่จัดเรียงแล้ว
+  const [staffSearch, setStaffSearch] = useState("");
+  const visibleStaff = staffSearch.trim()
+    ? sortedStaff.filter((s: any) => (s.name || "").toLowerCase().includes(staffSearch.trim().toLowerCase()))
+    : sortedStaff;
+
   // หาผู้ที่ทำ SLA ได้ดีที่สุดในฝ่าย (ต้องมีข้อมูล sla_pct จริง ไม่ใช่ "ไม่มีข้อมูล") เพื่อไฮไลต์เป็นตัวอย่างที่ดี
   const topPerformerId = staff.reduce((bestId: string | null, s: any) => {
     if (s.sla_pct == null) return bestId;
@@ -339,27 +345,50 @@ export default function StaffPerformancePage() {
             >
               ผลการปฏิบัติงานของเจ้าหน้าที่
             </CardTitle>
+
+            {/* ค้นหาชื่อเจ้าหน้าที่ */}
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 sm:max-w-xs">
+              <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" strokeWidth={2.5} />
+              <input
+                type="text"
+                value={staffSearch}
+                onChange={(e) => setStaffSearch(e.target.value)}
+                placeholder="ค้นหาชื่อเจ้าหน้าที่..."
+                className="w-full text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none"
+              />
+              {staffSearch && (
+                <button onClick={() => setStaffSearch("")} aria-label="ล้างคำค้นหา" className="shrink-0 text-gray-400 hover:text-gray-600">
+                  <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </button>
+              )}
+            </div>
+
             {loading ? <Skeleton height={240} /> : staff.length === 0 ? (
               <div className="py-6 text-center text-gray-400">ยังไม่มีเจ้าหน้าที่{isAllDepartments ? "" : "ในฝ่ายนี้"}</div>
+            ) : visibleStaff.length === 0 ? (
+              <div className="py-6 text-center text-gray-400">ไม่พบเจ้าหน้าที่ที่ตรงกับคำค้นหา "{staffSearch}"</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="max-h-[480px] overflow-y-auto overflow-x-auto rounded-lg border border-gray-100">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
-                      <th className="py-2 pr-4">เจ้าหน้าที่</th><th className="py-2 pr-4">ฝ่าย</th>
+                    <tr className="sticky top-0 z-10 border-b border-gray-200 bg-white text-left text-xs text-gray-500">
+                      <th className="py-2 pr-4 pl-2">เจ้าหน้าที่</th><th className="py-2 pr-4">ฝ่าย</th>
                       <th className="py-2 pr-4 text-right">รับผิดชอบ</th><th className="py-2 pr-4 text-right">เสร็จสิ้น</th>
                       <th className="py-2 pr-4 text-right">ค้างดำเนินการ</th><th className="py-2 pr-4 text-right">เวลาเฉลี่ย (ชม.)</th>
                       <th className="py-2 pr-6 text-right">อัตราความสำเร็จตาม SLA</th><th className="py-2">ภาระงาน</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedStaff.map((s: any) => (
+                    {visibleStaff.map((s: any) => (
                       <StaffWorkloadTableRow key={s.user_id} s={s} maxActive={maxActive} avgActive={avgActive} deptLabel={realDeptName} isTop={s.user_id === topPerformerId} onClick={() => setSelectedStaff(s)} />
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            <div className="mt-2 text-right text-[11px] text-gray-400">
+              แสดง {visibleStaff.length} จาก {staff.length} คน · เลื่อนดูรายชื่อเพิ่มเติมได้ในตาราง
+            </div>
           </Card>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

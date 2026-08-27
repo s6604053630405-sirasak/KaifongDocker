@@ -403,7 +403,9 @@ export default function ExecutivePage() {
         </Card>
 
         <Card className="flex flex-col items-center">
-          <CardTitle sub="ดัชนีวัดคุณภาพการบริการ (สัดส่วนเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด)">สัดส่วนเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด</CardTitle>
+          <CardTitle sub="ร้อยละของเรื่องร้องเรียนที่ดำเนินการแล้วเสร็จภายในระยะเวลาที่กำหนด เมื่อเทียบกับเรื่องร้องเรียนทั้งหมดที่ได้รับการแก้ไข">ดัชนีวัดคุณภาพการบริการตาม SLA
+            <InfoTip align="right" text="ภายใน SLA (%) = (เรื่องภายใน SLA ÷ เรื่องที่ดำเนินการแล้วทั้งหมด) × 100" />
+          </CardTitle>
           {sl ? <Skeleton height={130} /> : (
             <>
               <SLAGauge pct={sla?.summary?.sla_pct || 0} size={200} />
