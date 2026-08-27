@@ -21,7 +21,7 @@ git lfs install
 ## 1. Clone Project
 
 ```bash
-git clone https://github.com/s6604053630405-sirasak/KaifongDocker.git
+git clone https://github.com/Natokrit/KaifongDocker.git
 cd KaifongDocker
 ```
 
@@ -93,7 +93,7 @@ GROUP BY table_type;
  table_type | count 
 ------------+-------
  VIEW       |     2
- BASE TABLE |    40
+ BASE TABLE |    41
 (2 rows)
 
 หากได้ 41 ตาราง แสดงว่าฐานข้อมูลพร้อมใช้งาน
