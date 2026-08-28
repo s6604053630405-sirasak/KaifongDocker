@@ -54,17 +54,35 @@ export async function GET(req: NextRequest) {
     const pEnd = addDays(startDate, -1);
     const pSt = addDays(startDate, -spanDays);
 
-    const prevResult = await pool.query(
-      `
-      SELECT SUM(total_complaints) AS total, SUM(resolved_cases) AS resolved
-      FROM daily_complaint_summary
-      WHERE tenant_id = $1 AND summary_date BETWEEN $2 AND $3
-      `,
-      [TENANT_ID, pSt, pEnd]
+    // หาวันแรกที่ tenant นี้มีข้อมูลจริงในระบบ ใช้เช็คว่าช่วงก่อนหน้า (prev period)
+    // มีข้อมูลครอบคลุมพอจะเทียบเปอร์เซ็นต์ได้อย่างมีความหมายหรือไม่
+    const dataStartResult = await pool.query(
+      `SELECT MIN(summary_date) AS min_date FROM daily_complaint_summary WHERE tenant_id = $1`,
+      [TENANT_ID]
     );
-    const prev = prevResult.rows[0] || {};
+    const dataStartDate: string | null = dataStartResult.rows[0]?.min_date
+      ? new Date(dataStartResult.rows[0].min_date).toISOString().slice(0, 10)
+      : null;
+
+    // ถ้าช่วงก่อนหน้าเริ่มก่อนวันที่มีข้อมูลจริง แปลว่า prev period ถูกตัดสั้นลง
+    // (บางส่วนหรือทั้งหมดไม่มีข้อมูล) การเทียบ % จะไม่มีความหมาย ให้ข้ามการคำนวณเทียบไปเลย
+    const prevPeriodHasFullCoverage = dataStartDate ? pSt >= dataStartDate : true;
+
+    let prev: { total?: number; resolved?: number } = {};
+    if (prevPeriodHasFullCoverage) {
+      const prevResult = await pool.query(
+        `
+        SELECT SUM(total_complaints) AS total, SUM(resolved_cases) AS resolved
+        FROM daily_complaint_summary
+        WHERE tenant_id = $1 AND summary_date BETWEEN $2 AND $3
+        `,
+        [TENANT_ID, pSt, pEnd]
+      );
+      prev = prevResult.rows[0] || {};
+    }
 
     const pct = (curr: number, p: any) => {
+      if (!prevPeriodHasFullCoverage) return null;
       const pNum = Number(p || 0);
       return pNum ? Math.round(((curr - pNum) / pNum) * 100 * 10) / 10 : null;
     };
@@ -87,6 +105,7 @@ export async function GET(req: NextRequest) {
       total_delta: pct(currTotal, prev.total),
       resolved_delta: pct(currResolved, prev.resolved),
       prev_period: { start: pSt, end: pEnd },
+      prev_period_insufficient_data: !prevPeriodHasFullCoverage,
     });
   } catch (error: any) {
     console.error("DB ERROR (/api/kpi):", error);
