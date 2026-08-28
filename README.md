@@ -261,7 +261,7 @@ git lfs pull
 ```bash
 git lfs install
 
-git clone https://github.com/Thxngfh/KaifongDocker.git
+git clone https://github.com/Natokrit/KaifongDocker.git
 cd KaifongDocker
 
 # สร้างไฟล์ .env ที่ root แล้วใส่ LINE_CHANNEL_ACCESS_TOKEN ก่อน
